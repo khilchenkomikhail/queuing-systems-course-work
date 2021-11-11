@@ -72,8 +72,6 @@ class Ui_MainWindow(object):
         sc.axes[1, 3].plot(devices_numbers, devices_coefficients)
         sc.axes[1, 3].set_title("Using coefficient")
 
-        sc.axes[1, 3].yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-
         sc.fig.set_size_inches(12, 10)
         plt.show()
 

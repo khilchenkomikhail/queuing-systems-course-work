@@ -61,6 +61,63 @@ def handle_request(request, system_time):
         device_pointer.set_next()
         sources[request.source_number - 1].processed_requests += 1
         sources[request.source_number - 1].processing_time.append(request.processing_time)
+        return
+
+    device_pointer.set_next()
+    dev_index = device_pointer.get_index()
+    while devices[dev_index].request is not None and dev_index != start_dev_index:
+        device_pointer.set_next()
+        dev_index = device_pointer.get_index()
+
+    if dev_index != start_dev_index:
+        devices[dev_index].set_request(request, system_time)
+        device_pointer.set_next()
+        sources[request.source_number - 1].processed_requests += 1
+        sources[request.source_number - 1].processing_time.append(request.processing_time)
+        return
+
+    start_buff_index = buffer_pointer.get_index()
+    if buffers[start_buff_index].request is None:
+        buffers[start_buff_index].add_request(request, system_time)
+        buffer_pointer.set_next()
+        request.buffering_start_time = system_time
+        return
+
+    buffer_pointer.set_next()
+    buff_index = buffer_pointer.get_index()
+    while buffers[buff_index].request is not None and buff_index != start_buff_index:
+        buffer_pointer.set_next()
+        buff_index = buffer_pointer.get_index()
+
+    if buff_index != start_buff_index:
+        buffers[buff_index].add_request(request, system_time)
+        request.buffering_start_time = system_time
+        buffer_pointer.set_next()
+        return
+
+    old_i = get_oldest_in_buffers()
+    request_refused = buffers[old_i].get_request(system_time)
+    request_refused.buffering_end_time = system_time
+    request_refused.refuse()
+
+    sources[request_refused.source_number - 1].processing_time.append(request_refused.processing_time)
+    sources[request_refused.source_number - 1].waiting_time.append(request_refused.buffering_time)
+
+    buffer_pointer.set_i(old_i)
+    buffers[old_i].add_request(request, system_time)
+    request.buffering_start_time = system_time
+    buffer_pointer.set_next()
+
+
+def handle_request_step(request, system_time):
+    global dict
+    start_dev_index = device_pointer.get_index()
+
+    if devices[start_dev_index].request is None:
+        devices[start_dev_index].set_request(request, system_time)
+        device_pointer.set_next()
+        sources[request.source_number - 1].processed_requests += 1
+        sources[request.source_number - 1].processing_time.append(request.processing_time)
         dict[str(system_time)] = [str(request.source_number) + '.' + str(request.number), 'dev', str(start_dev_index)]
         return
 
@@ -124,6 +181,31 @@ def handle_request(request, system_time):
 
 
 def handle_buffered_requests(system_time):
+    start_dev_index = device_pointer.get_index()
+    dev_index = device_pointer.get_index()
+    tmp = get_youngest_in_buffers()
+    if not devices[dev_index].is_busy and tmp > -1.0:
+        request = buffers[tmp].get_request(system_time)
+        devices[dev_index].set_request(request, system_time)
+        sources[request.source_number - 1].processed_requests += 1
+        sources[request.source_number - 1].processing_time.append(request.processing_time)
+
+    if tmp > -1.0:
+        device_pointer.set_next()
+        dev_index = device_pointer.get_index()
+
+    tmp = get_youngest_in_buffers()
+    while tmp > -1.0 and dev_index != start_dev_index:
+        if not devices[dev_index].is_busy:
+            request = buffers[tmp].get_request(system_time)
+            devices[dev_index].set_request(request, system_time)
+            sources[request.source_number - 1].processed_requests += 1
+            sources[request.source_number - 1].processing_time.append(request.processing_time)
+        device_pointer.set_next()
+        dev_index = device_pointer.get_index()
+
+
+def handle_buffered_requests_step(system_time):
     global dict
     start_dev_index = device_pointer.get_index()
     dev_index = device_pointer.get_index()
@@ -136,10 +218,8 @@ def handle_buffered_requests(system_time):
 
         for key, value in dict.items():
             if value[0] == str(request.source_number) + '.' + str(request.number):
-                #dict[str(-2.0)] = dict[key]
                 dict[key][1] = 'devs'
                 dict[key][2] = str(dev_index)
-                # print("Debug: ", dict[str(system_time)])
                 break
 
     if tmp > -1.0:
@@ -155,11 +235,8 @@ def handle_buffered_requests(system_time):
             sources[request.source_number - 1].processing_time.append(request.processing_time)
             for key, value in dict.items():
                 if value[0] == str(request.source_number) + '.' + str(request.number):
-                    # dict[str(-2.0)] = dict[key]
-                    # dict[str(-2.0)][1] = 'dev'
                     dict[key][1] = 'devs'
                     dict[key][2] = str(dev_index)
-                    # print("Debug: ", dict[str(system_time)])
                     tmp = get_youngest_in_buffers()
                     break
         device_pointer.set_next()
@@ -178,6 +255,15 @@ def get_first_in_devices():
 
 
 def free_device(system_time):
+    counter = 0
+    for dev in devices:
+        if dev.get_end_of_processing_time() == system_time and dev.request is not None:
+            counter += 1
+            dev.delete_request()
+    return counter
+
+
+def free_device_step(system_time):
     global dict
     counter = 0
     for dev in devices:
@@ -213,8 +299,6 @@ def init(n_s, n_b, n_d, alpha, beta, lambda_param):
 
 def application(n_s, n_b, n_d, number_of_requests, alpha, beta, lambda_param):
     init(n_s, n_b, n_d, alpha, beta, lambda_param)
-
-    global dict
 
     processed_requests = 0
     generated_requests = 0
@@ -371,10 +455,10 @@ def step_application(number_of_requests, system_time, generated_requests, dev_po
             generated_requests += 1
             dict[str(system_time)] = [str(requests[-1].source_number) + '.' + str(requests[-1].number), 'src']
 
-    processed_requests += free_device(system_time)
-    handle_buffered_requests(system_time)
+    processed_requests += free_device_step(system_time)
+    handle_buffered_requests_step(system_time)
     for req in requests:
-        handle_request(req, system_time)
+        handle_request_step(req, system_time)
 
     next_time = sys.float_info.max
     if generated_requests < number_of_requests:
