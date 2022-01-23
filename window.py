@@ -47,6 +47,7 @@ class Ui_MainWindow(object):
         waiting_dispersion,\
         processing_dispersion,\
         devices_coefficients,\
+        sources_numbers,\
         devices_numbers = manager.application(self.n_s,
                                               self.n_b,
                                               self.n_d,
@@ -55,19 +56,19 @@ class Ui_MainWindow(object):
                                               self.beta,
                                               self.lambda_param)
 
-        sc.axes[0, 0].plot(devices_numbers, amount_generated_requests)
+        sc.axes[0, 0].plot(sources_numbers, amount_generated_requests)
         sc.axes[0, 0].set_title("Requests per source")
-        sc.axes[0, 1].plot(devices_numbers, probability_declining)
+        sc.axes[0, 1].plot(sources_numbers, probability_declining)
         sc.axes[0, 1].set_title("Declining probability")
-        sc.axes[0, 2].plot(devices_numbers, average_system_time)
+        sc.axes[0, 2].plot(sources_numbers, average_system_time)
         sc.axes[0, 2].set_title("Average time in system")
-        sc.axes[0, 3].plot(devices_numbers, average_waiting_time)
+        sc.axes[0, 3].plot(sources_numbers, average_waiting_time)
         sc.axes[0, 3].set_title("Average waiting time")
-        sc.axes[1, 0].plot(devices_numbers, average_processing_time)
+        sc.axes[1, 0].plot(sources_numbers, average_processing_time)
         sc.axes[1, 0].set_title("Average processing time")
-        sc.axes[1, 1].plot(devices_numbers, waiting_dispersion)
+        sc.axes[1, 1].plot(sources_numbers, waiting_dispersion)
         sc.axes[1, 1].set_title("Waiting dispersion")
-        sc.axes[1, 2].plot(devices_numbers, processing_dispersion)
+        sc.axes[1, 2].plot(sources_numbers, processing_dispersion)
         sc.axes[1, 2].set_title("Processing dispersion")
         sc.axes[1, 3].plot(devices_numbers, devices_coefficients)
         sc.axes[1, 3].set_title("Using coefficient")

@@ -351,6 +351,7 @@ def application(n_s, n_b, n_d, number_of_requests, alpha, beta, lambda_param):
                     break
             end = not are_full_buffer and not are_working_dev
 
+    sources_numbers = []
     devices_numbers = []
     amount_generated_requests = []
     probability_declining = []
@@ -361,7 +362,7 @@ def application(n_s, n_b, n_d, number_of_requests, alpha, beta, lambda_param):
     processing_dispersion = []
 
     for src in sources:
-        devices_numbers.append(src.number)
+        sources_numbers.append(int(src.number))
         amount_generated_requests.append(src.count_request)
         if src.count_request != 0:
             probability_declining.append(1.0 - src.processed_requests / src.count_request)
@@ -389,6 +390,7 @@ def application(n_s, n_b, n_d, number_of_requests, alpha, beta, lambda_param):
 
     devices_coefficients = []
     for dev in devices:
+        devices_numbers.append(dev.number)
         devices_coefficients.append(dev.busy_time / system_time)
 
     return amount_generated_requests,\
@@ -399,6 +401,7 @@ def application(n_s, n_b, n_d, number_of_requests, alpha, beta, lambda_param):
         waiting_dispersion,\
         processing_dispersion,\
         devices_coefficients,\
+        sources_numbers,\
         devices_numbers
 
 
